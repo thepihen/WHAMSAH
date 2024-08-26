@@ -1,0 +1,2 @@
+separator:
+  chunk: 22050 #this is the input chunk size for the model

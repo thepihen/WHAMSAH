@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+audio/__pycache__/
+GUI/__pycache__/
+audio/__pycache__/*
+GUI/__pycache__/*
+testdata
+testdata/*
+audio/__pycache__/separator.cpython-310.pyc
+GUI/__pycache__/gui.cpython-310.pyc

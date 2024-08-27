@@ -1,2 +1,13 @@
+global:
+  model: 'WHAMSAHNet'
+  device: 'cuda'
+  weights_path: 'model/weights/WHAMSAH_2stems_weights.pth'
+
 separator:
-  chunk: 22050 #this is the input chunk size for the model
+  chunk: 65536 #this is the input chunk size for the model
+  hop: 32768
+  window: 'hanning'
+
+model:
+  targets: ['vocals', 'accompaniment']
+  depth: 3

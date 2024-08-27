@@ -1,4 +1,4 @@
-from audio.audio_streamer import AudioDirector
+from audio.audio_director import AudioDirector
 director = AudioDirector()
 
 def separate():

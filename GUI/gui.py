@@ -18,6 +18,11 @@ class GUI:
         self.DIRECTOR = DIRECTOR
         self.hasFilePath = False
         self.hasAudioSource = False
+        self.devices = self.DIRECTOR.getAvailableDevices()
+        self.sortDevices() #classify devices as input or output
+        #self.inputDevices and self.outputDevices are now available
+        self.APIs = self.DIRECTOR.getHostAPIs() #each API has a name and a list of devices
+        #that are available for it under 'devices'
     def run(self):
         self.addElements()
         self.root.mainloop()
@@ -26,6 +31,8 @@ class GUI:
         #this is probably a stupid way of implementing buttons but this
         #is my first tkinter project :)
         #I also dont want to use match/case since it's only for relatively new python vers
+        print(f"Button was clicked with command: {cmd}")
+        print(f"Mode: {self.mode}, filepath: {self.filepath}, hasFilePath: {self.hasFilePath}, hasAudioSource: {self.hasAudioSource}")
         if cmd == None:
             print("Button was clicked with a null command. Returning")
             return
@@ -39,6 +46,8 @@ class GUI:
                     return
                 print("Starting separation...")
                 if self.mode=="async":
+                    print("*/****")
+                    print(self.filepath)
                     self.DIRECTOR.setTarget(self.filepath)
                 else:
                     self.DIRECTOR.setTarget()
@@ -52,9 +61,9 @@ class GUI:
             else:
                 print("Stopping separation...")
                 self.separating = False
-                self.sepBtnText.set('Separate!')
+                self.sepBtnText.set('Play/Separate!')
                 #TODO
-                stopSeparation()
+                self.DIRECTOR.stopSeparation()
         elif cmd == 'folder':
             print("Opening folder dialog...")
             self.getFilePath()
@@ -63,6 +72,7 @@ class GUI:
     #def showSelection(self,*args):
     #    self.mode_label.config(text=f"Selected: {self.mode.get()}")
     def updateMode(self, *args):
+        self.mode = self.modeLabelVar.get()
         self.DIRECTOR.updateMode(self.mode)
         
     def addElements(self):
@@ -83,14 +93,14 @@ class GUI:
         self.pickedStreamSource.set('No file selected')
         self.streamSourceLabel = tk.Label(self.root, textvariable=self.pickedStreamSource)
         self.streamSourceLabel.pack()
-        self.mode = tk.StringVar(value="async")
+        self.modeLabelVar = tk.StringVar(value="async")
 
         options = ["async", "sync"]
 
         # Create an OptionMenu (dropdown)
         self.mode_label = tk.Label(self.root, text="MODE:")
         self.mode_label.pack(pady=20)
-        dropdown = tk.OptionMenu(self.root, self.mode, *options)
+        dropdown = tk.OptionMenu(self.root, self.modeLabelVar, *options)
         dropdown.pack(pady=0)
 
         # Label to display the selected option
@@ -98,7 +108,7 @@ class GUI:
         #self.mode_label.pack(pady=20)
 
         # Update label whenever the selection changes
-        self.mode.trace('w', self.updateMode)
+        self.modeLabelVar.trace('w', self.updateMode)
         self.voxLabel = tk.Label(self.root, text="Vox Gain: 1.0")
         self.voxLabel.pack(pady=10)
         self.voxSlider = tk.Scale(self.root, from_=0, to=1, resolution=0.01, orient=tk.HORIZONTAL, length=300, command=lambda x: self.updateGainLabels("vox"))
@@ -133,3 +143,13 @@ class GUI:
             self.DIRECTOR.instr_gain = self.instrSlider.get()
             self.instrLabel.config(text=f"Instr Gain: {self.instrSlider.get():.2f}")
 
+
+    def sortDevices(self):
+        #classify devices in self.devices as input or output devices
+        self.inputDevices = []
+        self.outputDevices = []
+        for device in self.devices:
+            if device['max_input_channels']>0:
+                self.inputDevices.append(device)
+            if device['max_output_channels']>0:
+                self.outputDevices.append(device)

@@ -5,8 +5,9 @@ global:
 
 separator:
   chunk: 65536 #this is the input chunk size for the model
-  hop: 32768
-  window: 'hanning'
+  hop: 65536 #32768
+  window: ''
+  sr: 44100
 
 model:
   targets: ['vocals', 'accompaniment']

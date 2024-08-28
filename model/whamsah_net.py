@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 class WHAMSAHNet(nn.Module):
     def __init__(self, cfg):
-        pass
+        super(WHAMSAHNet, self).__init__()
+        
     def forward(self, x):
         return x

@@ -8,6 +8,9 @@ import torch
 import yaml
 from utils import get_model, load_weights
 import sounddevice as sd
+#in tests sd consistently reported the wrong samplerate for my sound card 
+#(Focusrite Scarlett 2i2 3rd gen)...
+#in the end it still works but keep this in mind
 
 event = threading.Event()
 
@@ -214,6 +217,18 @@ class AudioDirector:
         return sd.query_devices(device=device, kind=kind)
     def getHostAPIs(self, index=None):
         return sd.query_hostapis(index=index)
+    
+
+
+    def updateInputDevice(self, device):
+        #TODO
+        self.inputDevice = device
+        print(f"AD: Input device updated to {device}")
+    
+    def updateOutputDevice(self, device):
+        #TODO
+        self.outputDevice = device
+        print(f"AD: Output device updated to {device}")
 
 def fileLoad(path):
     # i don't honestly know all of sf supported formats apart from the bigger ones

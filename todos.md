@@ -1,7 +1,9 @@
 # ToDos
-- [ ] GUI: device selection
-- [ ] GUI: sync mode audio source selection (which app is the audio coming from?)
 - [ ] async mode (run model on existing audio file)
 - [ ] train model
 - [ ] requirements with pipreqs
-- [ ] audio: rework pipeline for streams to set streamer SR to system one
+
+
+## Very far off in the future
+- [ ] GUI: sync mode audio source selection (which app is the audio coming from?)
+- [ ] audio: rework pipeline for streams to set streamer SR to system one <--- seems to be a pain in the ass and ultimately unneeded

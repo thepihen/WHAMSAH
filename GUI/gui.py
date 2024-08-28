@@ -10,7 +10,7 @@ class GUI:
         #set the app name to VocalSplitter
         self.root.title('VocalSplitter')
         #set initial size to 400x400
-        self.root.geometry('400x400')
+        self.root.geometry('600x600')
         self.separating = False
         self.sepButton = tk.Button(self.root)
         self.filepath = None
@@ -22,6 +22,9 @@ class GUI:
         self.sortDevices() #classify devices as input or output
         #self.inputDevices and self.outputDevices are now available
         self.APIs = self.DIRECTOR.getHostAPIs() #each API has a name and a list of devices
+        self.APINames = [api['name'] for api in self.APIs]
+        self.availableInputs = ["-"]
+        self.availableOutputs = ["-"]
         #that are available for it under 'devices'
     def run(self):
         self.addElements()
@@ -120,6 +123,32 @@ class GUI:
         self.instrSlider.set(1.0)
         self.instrSlider.pack(pady=0)
         
+        #API SELECTIOn
+        self.apiLabel = tk.Label(self.root, text="HOST API:")
+        self.apiLabel.pack(pady=20)
+        self.apiLabelVar = tk.StringVar(value="None")
+        APIdropdown = tk.OptionMenu(self.root, self.apiLabelVar, *self.APINames)
+        self.apiLabelVar.trace('w', self.updateAPI)
+        APIdropdown.pack(pady=0)
+
+        #INPUT SELECTION
+        self.input_label = tk.Label(self.root, text="INPUT DEVICE:")
+        self.inputLabelVar = tk.StringVar(value="None")
+        self.input_label.pack(pady=20)
+        self.INPUTdropdown = tk.OptionMenu(self.root, self.inputLabelVar, *self.availableInputs)
+        self.INPUTdropdown.pack(pady=0)
+        self.inputLabelVar.trace('w', self.updateInput)
+        
+        #repeat for output devices making the new dropdown appear alongside the input one
+        self.output_label = tk.Label(self.root, text="OUTPUT DEVICE:")
+        self.outputLabelVar = tk.StringVar(value="None")
+        self.output_label.pack(pady=20)
+        self.OUTPUTdropdown = tk.OptionMenu(self.root, self.outputLabelVar, *self.availableOutputs)
+        self.OUTPUTdropdown.pack(pady=0)
+        self.outputLabelVar.trace('w', self.updateOutput)
+
+
+
     
     def getFilePath(self):
         file_path = filedialog.askopenfilename(title="Select the source audio file", initialdir=os.getcwd(), filetypes=[("WAV files", ".wav"), ("MP3 files", ".mp3"), ("FLAC files",".flac"),("All files", ".*")]) #i honestly don't know
@@ -153,3 +182,54 @@ class GUI:
                 self.inputDevices.append(device)
             if device['max_output_channels']>0:
                 self.outputDevices.append(device)
+
+    def updateAPI(self, *args):
+        #update the available inputs and outputs based on the selected API
+        selectedAPI = self.apiLabelVar.get()
+        print(f"Selected API: {selectedAPI}")
+        #print(self.inputDevices)
+        #assert 0
+        for api in self.APIs:
+            if api['name'] == selectedAPI:
+                self.devicesIndexes = api['devices']
+                self.availableInputs = [device['name'] for device in self.inputDevices if device['index'] in self.devicesIndexes]
+                self.availableOutputs = [device['name'] for device in self.outputDevices if device['index'] in self.devicesIndexes]
+                print(f"Available inputs: {self.availableInputs}")
+                print(f"Available outputs: {self.availableOutputs}")
+                break
+        #update the dropdowns
+        self.updateDropdowns()
+
+    def updateDropdowns(self):
+        #update the dropdowns based on the available inputs and outputs
+        #self.INPUTdropdown = tk.OptionMenu(self.root, self.inputLabelVar, *self.availableInputs)
+        #self.
+        menu = self.INPUTdropdown["menu"]
+        menu.delete(0, "end")
+        for option in self.availableInputs:
+            menu.add_command(label=option, command=lambda value=option: self.inputLabelVar.set(value))
+        self.inputLabelVar.set(self.availableInputs[0])
+
+        menuout = self.OUTPUTdropdown["menu"]
+        menuout.delete(0, "end")
+        for option in self.availableOutputs:
+            menuout.add_command(label=option, command=lambda value=option: self.outputLabelVar.set(value))
+        self.outputLabelVar.set(self.availableOutputs[0])
+        #self.outputLabelVar.set(self.availableOutputs[0])
+    
+    def updateInput(self, *args):
+        #update the input device based on the selected input device
+        selectedInput = self.inputLabelVar.get()
+        print(f"Selected input: {selectedInput}")
+        for device in self.inputDevices:
+            if device['name'] == selectedInput:
+                self.DIRECTOR.updateInputDevice(device)
+                break
+    def updateOutput(self, *args):
+        #update the output device based on the selected output device
+        selectedOutput = self.outputLabelVar.get()
+        print(f"Selected output: {selectedOutput}")
+        for device in self.outputDevices:
+            if device['name'] == selectedOutput:
+                self.DIRECTOR.updateOutputDevice(device)
+                break

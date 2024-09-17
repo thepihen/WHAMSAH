@@ -3,6 +3,7 @@
 - [ ] train model
 - [ ] requirements with pipreqs
 - [ ] sync mode: read blocks from chosen device
+- [] async mode: pad last block (the length is currently != net input)
 
 ## Very far off in the future
 - [ ] GUI: sync mode audio source selection (which app is the audio coming from?)

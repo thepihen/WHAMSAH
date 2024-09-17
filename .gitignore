@@ -8,3 +8,7 @@ testdata
 testdata/*
 audio/__pycache__/separator.cpython-310.pyc
 GUI/__pycache__/gui.cpython-310.pyc
+test.ipynb
+project_history_observations.md
+model/weights/*
+README_temp.md

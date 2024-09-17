@@ -36,7 +36,7 @@ class AudioDirector:
             return
         with open(cfgpath, 'r') as stream:
             try:
-                self.config = yaml.safe_load(stream)
+                self.config = yaml.load(stream,Loader=yaml.FullLoader)
                 self.chunkLength = self.config['separator']['chunk']
                 self.hop = self.config['separator']['hop']
                 winType = self.config['separator']['window']
@@ -171,14 +171,28 @@ class AudioDirector:
             self.separating = False
             return
         #separate chunk
+        #chunk to torch
+        chunk = torch.from_numpy(chunk).to(self.config['global']['device'])
+        chunk = chunk.T
+        #chunk should be float32
+        chunk = chunk.float()
+        chunk = chunk.unsqueeze(0)
+
         with torch.inference_mode():
             out = self.model(chunk)
         #chose https://pypi.org/project/sounddevice/ for better documentation
         #and explicitely mentioning our usage among use cases
         #convert to float32
-        self.outChunk = out.astype(np.float32)
-        outdata[:] = self.outChunk[:frames]
+        out = np.transpose(torch.squeeze(out, dim=0).to("cpu").numpy())[:frames]
+        chunk = np.transpose(torch.squeeze(chunk, dim=0).to("cpu").numpy())[:frames]
+        instr_part = chunk - out
 
+        #self.outChunk = out
+        #self.outChunk = np.transpose(out)
+        #print(self.outChunk.shape)
+        #assert 0
+        #outdata[:] = self.outChunk[:frames]
+        outdata[:] = instr_part * self.instr_gain + out * self.vox_gain #np.transpose(out)[:frames]
 
 
 
@@ -197,6 +211,7 @@ class AudioDirector:
                 print("Script will continue with untrained net (debug=true).")
             else:
                 sys.exit(1)
+        self.model = self.model.to(self.config['global']['device'])
         return
     
     def stopSeparation(self):

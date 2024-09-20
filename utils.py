@@ -6,6 +6,9 @@ def get_model(key, cfg):
     if key=='whamsah_net' or key.lower()=='whamsah' or key.lower()=='whamsahnet':
         from model.whamsah_net import WHAMSAHNet
         model = WHAMSAHNet(cfg)
+    elif key=='whamsah_mix':
+        from model.whamsah_net_mix import WHAMSAHNet
+        model = WHAMSAHNet(cfg)
     #ADD NEW MODELS HERE
     else:
         print(f"Invalid model: {key}. See utils.py for valid choices")

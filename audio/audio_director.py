@@ -63,6 +63,8 @@ class AudioDirector:
             
     def setTarget(self, source=None, target_sr=None):
         print("Setting target...")
+        
+        self.async_index = 0 #just in case
         if self.mode == "async":
             if source == None:
                 print("No file selected, returning...")
@@ -113,10 +115,11 @@ class AudioDirector:
         self.separating=True
         if self.stream is None:
             self.stream = sd.OutputStream(blocksize=65536, callback=self.streamCallback, finished_callback=event.set)
+            print("Reassigned stream")
         self.stream.start()
-        with self.stream:
+        #with self.stream:
             #pass
-            input() #TODO: find a better way to do this
+        #    input() #TODO: find a better way to do this
             #Right now, stopping and restarting the stream will break the program
             #and it will have to be restarted
             #It is acceptable only because it's a proof of concept
@@ -164,6 +167,7 @@ class AudioDirector:
         return False
     
     def streamCallback(self,outdata, frames, time, status=True):
+        print(frames)
         if status:
             print(status, file=sys.stderr)
         chunk = self.getChunk()
@@ -177,7 +181,8 @@ class AudioDirector:
         #chunk should be float32
         chunk = chunk.float()
         chunk = chunk.unsqueeze(0)
-
+        #outdata[:] = np.transpose(torch.squeeze(chunk, dim=0).to("cpu").numpy()) #if you want to test a pass-through
+        
         with torch.inference_mode():
             out = self.model(chunk)
         #chose https://pypi.org/project/sounddevice/ for better documentation
@@ -193,7 +198,7 @@ class AudioDirector:
         #assert 0
         #outdata[:] = self.outChunk[:frames]
         outdata[:] = instr_part * self.instr_gain + out * self.vox_gain #np.transpose(out)[:frames]
-
+        
 
 
 
@@ -216,9 +221,9 @@ class AudioDirector:
     
     def stopSeparation(self):
         self.separating = False
+        #self.stream.stop()
         self.stream.stop()
-        self.stream.close()
-        self.stream = None
+        #self.stream = None
         print("AD: SEPARATION STOPPED")
         #if async, and if the choice was to save - export the output
         #TODO

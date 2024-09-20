@@ -1,4 +1,5 @@
 import os
+import sys
 import app
 import tkinter as tk
 import tkinter.filedialog as filedialog
@@ -9,6 +10,7 @@ class GUI:
         self.root = tk.Tk()
         #set the app name to VocalSplitter
         self.root.title('VocalSplitter')
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         #set initial size to 400x400
         self.root.geometry('600x600')
         self.separating = False
@@ -29,7 +31,11 @@ class GUI:
     def run(self):
         self.addElements()
         self.root.mainloop()
-
+    def on_closing(self):
+        # Destroy the window and exit the program
+        print("Closing window and exiting program...")
+        self.root.destroy()  # Destroy the Tkinter window
+        sys.exit()  # Exit the entire script
     def buttonClick(self, cmd=None):
         #this is probably a stupid way of implementing buttons but this
         #is my first tkinter project :)

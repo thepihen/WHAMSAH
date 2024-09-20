@@ -1,7 +1,5 @@
 # ToDos
-- [ ] async mode (run model on existing audio file)
-- [ ] train model
-- [ ] requirements with pipreqs
+- [ ] requirements
 - [ ] sync mode: read blocks from chosen device
 - [] async mode: pad last block (the length is currently != net input)
 

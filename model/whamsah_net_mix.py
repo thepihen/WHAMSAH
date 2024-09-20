@@ -1,5 +1,5 @@
 """
-7.0: like 6.0 but without context to reduce inference time
+10.0: 9.0 + applenet-like sconv layers. SKIPS
 """
 
 import torch
@@ -18,14 +18,15 @@ EPSILON = 1e-8
 class WHEncLayer(nn.Module):
     def __init__(self, in_c, out_c):
         super(WHEncLayer, self).__init__()
-        self.conv = nn.Conv1d(in_c, out_c, kernel_size=8, stride=2, dilation=1, padding=3)#, padding='same')
-        self.pool = nn.AvgPool1d(kernel_size=8, stride=2, ceil_mode=True)
+        self.conv = nn.Conv1d(in_c, out_c, kernel_size=3, stride=1, dilation=1, padding=1)#, padding='same')
+        self.pool = nn.AvgPool1d(kernel_size=2, stride=2)
         #self.BN = nn.BatchNorm1d(out_c)
         self.act = nn.GELU()
     def forward(self,x, skip=True):
         c = self.conv(x) #out is N - 8  + 1
         #x = self.BN(c)
         x = self.act(c)
+        x = self.pool(x)
         if skip:
             return x, c
         return x
@@ -33,17 +34,19 @@ class WHEncLayer(nn.Module):
 class WHDecLayer(nn.Module):
     def __init__(self, in_c, out_c, hasAttention=False, last=False):
         super(WHDecLayer, self).__init__()
-        self.conv = nn.ConvTranspose1d(in_c, out_c, kernel_size=8, stride=2, dilation=1, padding=3)
+        self.convt = nn.ConvTranspose1d(in_c, in_c, kernel_size=4, stride=2, dilation=1, padding=1)
+        self.conv = nn.Conv1d(in_c, out_c, kernel_size=3, stride=1, dilation=1, padding=1)
         #self.BN = nn.BatchNorm1d(out_c)
         self.last=last
         self.act = nn.GELU()
         self.hasAttention = hasAttention
         if hasAttention:
             self.innerAtt = nn.MultiheadAttention(in_c, 4, batch_first=True)
-        self.innerConv = nn.Conv1d(in_c, 2*in_c, kernel_size=5, stride=1, dilation=1, padding=2)
+        self.innerConv = nn.Conv1d(in_c, 2*in_c, kernel_size=1, stride=1, dilation=1)
         self.innerGLU = nn.GLU(dim=1)
 
     def forward(self,x, skip=None):
+        x = self.convt(x)
         if skip is not None:
             if self.hasAttention:
                 skip = rearrange(skip, 'b c t -> b t c')
@@ -54,75 +57,57 @@ class WHDecLayer(nn.Module):
             skip = self.innerGLU(skip)
             skip = self.act(skip)
             x += skip
-        x = self.conv(x)
         #x = self.BN(x)
+        x = self.conv(x)
         if self.last:
             return x
         x = self.act(x)
         return x
 
+class SConv(nn.Module):
+    def __init__(self,in_c, D):
+        super(SConv, self).__init__()
+        self.c1 = nn.Conv1d(in_c, in_c, kernel_size=1, stride=1, dilation=1)
+        self.GN1 = nn.GroupNorm(in_c, in_c)
+        self.GN2 = nn.GroupNorm(in_c, in_c)
+        
+        self.pre1 = nn.PReLU()
+        self.c2 = nn.Conv1d(in_c, in_c, kernel_size=3, stride=1, dilation=D, padding=D)
+        self.pre2 = nn.PReLU()
+    def forward(self,input):
+        x = self.c1(input)
+        x = self.pre1(x)
+        x = self.GN1(x)
+        x = self.c2(x)
+        x = self.pre2(x)
+        x = self.GN2(x)
+        x = x + input
+        return x 
 
 class ConvMidLayer(nn.Module):
-    def __init__(self, in_c,segment_l, depth, contextSize=5,):
+    def __init__(self, in_c,segment_l, depth, R=6, D=9, contextSize=5,):
         super(ConvMidLayer, self).__init__()
         assert depth is not None, "Depth must be specified in ConvMidLayer"
         assert segment_l is not None, "Segment length must be specified in ConvMidLayer"
         self.in_c = in_c
         self.in_len = segment_l / (2**depth) #length of the input segment in samples
-        self.GN = nn.GroupNorm(in_c, in_c)
-        self.tRNN = nn.RNN(in_c, in_c*2, batch_first=True, dropout=0.1) #TIME RNN - features are in the time dimension
-        #NOT bidirectional
-        self.ff1 = nn.Linear(in_c*2, in_c)
-        
-        self.GN2 = nn.GroupNorm(in_c, in_c)
-        self.cRNN = nn.RNN(in_c, in_c*2, batch_first=True, dropout=0.1) #CHANNEL RNN - features are in the channel dimension
-        #NOT bidirectional
-        self.ff2 = nn.Linear(in_c*2, in_c)
-
-        #self.att = nn.MultiheadAttention(in_c, 1, dropout=0.1, batch_first=True,
-        #                                 kdim=in_c, vdim=in_c)
-        self.contextSize = contextSize
-        
-        #self.previousInput = None
+        self.parts = nn.ModuleList()
+        for i in range(R):
+            innerParts = nn.ModuleList()
+            for j in range(D):
+                innerParts.append(SConv(in_c, 2**j))
+            self.parts.append(innerParts)
         self.context = []
-    def forward(self, input,debug=False):
-        """
-        #self.updateContext(input.clone().detach(), updateComputed=False)
-        #q = self.innerFQ.getQueue()
-        if len(self.context) == 0:
-            print(f"Initializing context with shape {input.shape}") if debug else None
-            for i in range(self.contextSize-1):
-                self.context.append(torch.zeros_like(input, requires_grad=False))
-        self.context.append(input.detach().clone())
-        if len(self.context) > self.contextSize:
-            self.context.pop(0)
-        #move all elements in q to the device of input
-        #now the array is always full
-        h = torch.cat(self.context, dim=2)
-        if h.device != input.device:
-            h = h.to(input.device)
-        """
-        x = self.GN(input)
-        x = rearrange(x, 'b c (d n) -> b (c n) d', d=self.in_c, n=int(self.in_len/self.in_c))
-        x = self.tRNN(x)[0]
-        x = self.ff1(x)
-        x = rearrange(x, 'b (c n) d -> b c (d n)', c=self.in_c, d=self.in_c, n=int(self.in_len/self.in_c))
-        input = x+input #skip
-        #print(h.shape) #4, 40960, 16
-        #x = rearrange(input, 'b (c n) d -> b c (d n)', c=self.in_c, d=self.in_c, n=int(self.in_len*self.contextSize/self.in_c))
-        #g = rearrange(g, 'b c t -> b t c')
-        x = self.GN2(x)
-        x = rearrange(x, 'b c t -> b t c')
-        x = self.cRNN(x)[0]
-        x = self.ff2(x)
-        x = rearrange(x, 'b t c -> b c t')
-        #h = rearrange(h, 'b c t -> b t c') #unneeded, h is already [b, t, c]
-        input = x+input
-        return input
+    def forward(self, x,debug=False):
+        for i in range(len(self.parts)):
+            for j in range(len(self.parts[i])):
+                x = self.parts[i][j](x)
+        return x
     def updateContext(self, input,updateComputed=False):
         self.innerFQ.push(input,update=updateComputed) #the first execution will be a bit pricier 
         #as it needs to create some arrays
     def clearQueue(self):
+        return
         #self.RNN_hidden = None
         self.context = []
         #self.innerFQ.clearQueue()
@@ -143,12 +128,13 @@ class WHAMSAHNet(nn.Module):
         #self.MML = MagicalMidLayer(self.in_c, self.in_c)
         for i in range(self.depth):
             if i==self.depth-1:
-                self.DECLAYERS.append(WHDecLayer(self.in_c, self.in_c//self.growth, last=True))
+                self.DECLAYERS.append(WHDecLayer(self.in_c, self.in_c//self.growth, hasAttention=False, last=True))
             else:
                 self.DECLAYERS.append(WHDecLayer(self.in_c, self.in_c//self.growth, hasAttention=False))
             self.in_c = self.in_c//self.growth
         
     def clearQueue(self):
+        return
         try:
             self.midConvLayer.clearQueue()
             #self.MML.clearQueue()

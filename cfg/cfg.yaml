@@ -1,7 +1,7 @@
 global:
-  model: 'WHAMSAHNet'
+  model: 'whamsah_mix'
   device: 'cuda'
-  weights_path: 'model/weights/whamsah_v7noact_ep_290_sdr_3-8244.pth'
+  weights_path: 'model/weights/whamsah_mix_fix_ep1202.pth'
 
 separator:
   chunk: 65536 #this is the input chunk size for the model
@@ -22,19 +22,19 @@ audio:
   segment: 11
 
 training:
-  batch_size: 4
-  gradient_accumulation_steps: 8
+  batch_size: 12
+  gradient_accumulation_steps: 2
   grad_clip: 0
   instruments:
   - vocals
   - bass
   - drums
   - other
-  lr: 2.99e-05
+  lr: 1.0e-04
   patience: 2
   reduce_factor: 0.95
   target_instrument: vocals #use null to have all of them
-  num_epochs: 200
+  num_epochs: 2000
   num_steps: 25
   q: 0.95
   coarse_loss_clip: true
@@ -53,7 +53,7 @@ augmentations:
   loudness: true # randomly change loudness of each stem on the range (loudness_min; loudness_max)
   loudness_min: 0.5
   loudness_max: 1.5
-  mixup: true # mix several stems of same type with some probability (only works for dataset types: 1, 2, 3)
+  mixup: false # mix several stems of same type with some probability (only works for dataset types: 1, 2, 3)
   mixup_probs: !!python/tuple # 2 additional stems of the same type (1st with prob 0.2, 2nd with prob 0.02)
     - 0.2
     - 0.02

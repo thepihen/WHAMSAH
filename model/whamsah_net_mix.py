@@ -6,7 +6,7 @@ import torch
 from einops import rearrange
 import torch.nn as nn
 import torch.nn.functional as F
-from torchtune.modules import RotaryPositionalEmbeddings
+#from torchtune.modules import RotaryPositionalEmbeddings
 
 #from 
 #model augmentations:
@@ -166,7 +166,7 @@ class WHAMSAHNet(nn.Module):
         return x
     
 
-
+"""
 class FrameQueue:
     def __init__(self, frameSize, hopSize=None):
         self.queue = []
@@ -217,3 +217,4 @@ class FrameQueue:
     def clearQueue(self):   
         self.queue = []
         self.computedQ = None
+"""

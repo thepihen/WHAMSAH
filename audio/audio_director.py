@@ -24,7 +24,11 @@ class AudioDirector:
         self.vox_gain = 1.0
         self.instr_gain = 1.0
         self.stream = None 
+        self.syncStream = None
+        self.inputDevID = None
+        self.outputDevID = None
         self.win = None
+        self.chunk = None
 
     def setup(self, cfgpath):
         self.config = None
@@ -87,12 +91,6 @@ class AudioDirector:
                 
                 
             print("AD: Starting separation...")
-        else:
-            #TODO: implement sync mode
-            print("TODO!")
-            #pick target
-            #stgart audio pipeline
-
         self.hasTarget = True
         return True
     def start(self):
@@ -107,17 +105,34 @@ class AudioDirector:
 
     def updateMode(self, mode):
         print(f"AD: Updating mode to {mode}")
+        if mode != self.mode:
+            if self.mode == "async":
+                self.stream.abort()
+                self.stream = None
+            else:
+                self.syncStream.abort()
+                self.syncStream = None
         self.mode = mode
+        
         #if there is anything running interrupt it
         #TODO
     def separate(self):
         #TODO
         self.separating=True
-        if self.stream is None:
-            self.stream = sd.OutputStream(blocksize=65536, callback=self.streamCallback, finished_callback=event.set)
-            print("Reassigned stream")
-        self.stream.start()
-        #with self.stream:
+        if self.mode == "async":
+            if self.stream is None:
+                self.stream = sd.OutputStream(blocksize=65536, callback=self.streamCallback, finished_callback=event.set)
+                print("Reassigned stream")
+            self.stream.start()
+        elif self.mode == "sync":
+            #setup an input stream from self.inputDevice
+            #setup an output stream from self.outputDevice
+            #start both
+            if self.syncStream == None:
+                self.syncStream = sd.Stream(blocksize=65536, callback=self.syncStreamCallback, finished_callback=event.set, device=[self.inputDevID, self.outputDevID])
+                print("Reassigned syncStream")
+            self.syncStream.start()
+            #with self.stream:
             #pass
         #    input() #TODO: find a better way to do this
             #Right now, stopping and restarting the stream will break the program
@@ -150,15 +165,19 @@ class AudioDirector:
         if self.mode == "async":
             if self.async_index >= len(self.target_audio):
                 return None
-            chunk = self.target_audio[self.async_index:self.async_index+self.chunkLength,:]
+            try:
+                chunk = self.target_audio[self.async_index:self.async_index+self.chunkLength,:]
+            except:
+                chunk = self.target_audio[self.async_index:,:]
+                #zero pad
+                chunk = np.pad(chunk, ((0, self.chunkLength - chunk.shape[0]), (0,0)), 'constant')
             if self.win is not None:
                 chunk = chunk*self.win
             self.async_index += self.hop
             return chunk
         elif self.mode == "sync": #I have explicitely separated it from "else" just in case 
             #something weird happens with mode
-            #TODO
-            return None
+            return self.chunk
         return None
 
     def hasNextChunk(self):
@@ -171,8 +190,10 @@ class AudioDirector:
         if status:
             print(status, file=sys.stderr)
         chunk = self.getChunk()
-        if chunk is None:
-            self.separating = False
+        if chunk is None and self.mode=="async":
+            self.stopSeparation()
+            return
+        if chunk is None and self.mode=="sync":
             return
         #separate chunk
         #chunk to torch
@@ -198,8 +219,41 @@ class AudioDirector:
         #assert 0
         #outdata[:] = self.outChunk[:frames]
         outdata[:] = instr_part * self.instr_gain + out * self.vox_gain #np.transpose(out)[:frames]
+    
+    def syncStreamCallback(self, indata, outdata, frames, time, status):
+        #TODO
+        print("got input chunk")
+        print(frames)
+        print(indata.shape)
+        if indata.shape[1] > 2:
+            indata = indata[:,:2]
+        elif indata.shape[1] < 2:
+            indata = np.pad(indata, ((0,0), (0,2-indata.shape[1])), 'constant')
+        #we absolutely want stereo data for the model
+        if indata is None and self.mode=="sync":
+            return
+        chunk = torch.from_numpy(indata).to(self.config['global']['device'])
+        chunk = chunk.T
+        #chunk should be float32
+        chunk = chunk.float()
+        chunk = chunk.unsqueeze(0)
+        #outdata[:] = np.transpose(torch.squeeze(chunk, dim=0).to("cpu").numpy()) #if you want to test a pass-through
         
+        with torch.inference_mode():
+            out = self.model(chunk)
+        #chose https://pypi.org/project/sounddevice/ for better documentation
+        #and explicitely mentioning our usage among use cases
+        #convert to float32
+        out = np.transpose(torch.squeeze(out, dim=0).to("cpu").numpy())[:frames]
+        chunk = np.transpose(torch.squeeze(chunk, dim=0).to("cpu").numpy())[:frames]
+        instr_part = chunk - out
 
+        #self.outChunk = out
+        #self.outChunk = np.transpose(out)
+        #print(self.outChunk.shape)
+        #assert 0
+        #outdata[:] = self.outChunk[:frames]
+        outdata[:] = instr_part * self.instr_gain + out * self.vox_gain
 
 
     def debug(self):
@@ -222,7 +276,10 @@ class AudioDirector:
     def stopSeparation(self):
         self.separating = False
         #self.stream.stop()
-        self.stream.stop()
+        if self.mode=="async":
+            self.stream.stop()
+        else:
+            self.syncStream.stop()
         #self.stream = None
         print("AD: SEPARATION STOPPED")
         #if async, and if the choice was to save - export the output
@@ -243,12 +300,16 @@ class AudioDirector:
     def updateInputDevice(self, device):
         #TODO
         self.inputDevice = device
-        print(f"AD: Input device updated to {device}")
+        self.inputDevID = device['index']
+        print(f"AD: Input device updated to {device['name']}")
+        print(device)
     
     def updateOutputDevice(self, device):
         #TODO
         self.outputDevice = device
-        print(f"AD: Output device updated to {device}")
+        self.outputDevID = device['index']
+        print(f"AD: Output device updated to {device['name']}")
+        #print(device)
 
 def fileLoad(path):
     # i don't honestly know all of sf supported formats apart from the bigger ones

@@ -1,5 +1,9 @@
-from audio.audio_director import AudioDirector
-director = AudioDirector()
+"""
+Unused for the moment
+"""
+
+#from audio.audio_director import AudioDirector
+#director = AudioDirector()
 
 def separate():
     pass

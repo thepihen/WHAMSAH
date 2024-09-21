@@ -4,7 +4,7 @@ import app
 import tkinter as tk
 import tkinter.filedialog as filedialog
 from PIL import Image, ImageTk
-from audio.separator import separate, stopSeparation, asyncSeparate
+
 class GUI:
     def __init__(self, DIRECTOR):
         self.root = tk.Tk()
@@ -12,7 +12,7 @@ class GUI:
         self.root.title('VocalSplitter')
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         #set initial size to 400x400
-        self.root.geometry('600x600')
+        self.root.geometry('600x700')
         self.separating = False
         self.sepButton = tk.Button(self.root)
         self.filepath = None
@@ -226,15 +226,16 @@ class GUI:
     def updateInput(self, *args):
         #update the input device based on the selected input device
         selectedInput = self.inputLabelVar.get()
-        print(f"Selected input: {selectedInput}")
+        #print(f"Selected input: {selectedInput}")
         for device in self.inputDevices:
             if device['name'] == selectedInput:
                 self.DIRECTOR.updateInputDevice(device)
+                self.hasAudioSource = True
                 break
     def updateOutput(self, *args):
         #update the output device based on the selected output device
         selectedOutput = self.outputLabelVar.get()
-        print(f"Selected output: {selectedOutput}")
+        #print(f"Selected output: {selectedOutput}")
         for device in self.outputDevices:
             if device['name'] == selectedOutput:
                 self.DIRECTOR.updateOutputDevice(device)

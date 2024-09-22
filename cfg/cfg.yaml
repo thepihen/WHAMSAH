@@ -1,7 +1,7 @@
 global:
-  model: 'whamsah_mix'
+  model: 'whamsah_mix_inv'
   device: 'cuda'
-  weights_path: 'model/weights/whamsah_mix_fix_ep1202.pth'
+  weights_path: 'model/weights/whamsah_mix_2060.pth'
 
 separator:
   chunk: 65536 #this is the input chunk size for the model

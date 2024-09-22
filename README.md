@@ -32,7 +32,7 @@ torch
 ## Model details
 The separation is powered by a custom U-Net architecture (aka WHAMSAHNet) with a bottleneck layer inspired by [Apple's singing voice cancellation model](https://arxiv.org/abs/2401.12068); WHAMSAHNet was trained and tested solely on MUSDB18-HQ - no extra data was used.
 
-The current model reached an SDR of 4.71 dB on the MUSDB18 test set.
+The current model reached an SDR of 5.21 dB on the MUSDB18 test set.
 
 ## Known issues with the current model
 * Noisy separation

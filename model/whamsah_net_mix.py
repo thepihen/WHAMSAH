@@ -1,5 +1,11 @@
 """
-10.0: 9.0 + applenet-like sconv layers. SKIPS
+THIS MODEL IS UNUSED FOR NOW - It is exactly the same as whamsah_net_mix_inv
+with the exception of the output:
+- this model predicts the vocals directly
+- the inv ver. instead obtains the vocals by isolating and removing the instrumental part
+  (empirically led to better results)
+
+v10.0
 """
 
 import torch

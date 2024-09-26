@@ -16,7 +16,7 @@ For both modes, two sliders are available to control the loudness of both the vo
 
 
 ## Requirements
-Sync mode requires a virtual audio cable in order to separate audio from another application. A virtual audio cable is not already included in this repository, it is up to the user to download and install one.
+Sync mode requires a virtual audio cable in order to separate audio from another application. **A virtual audio cable is not already included in this repository.**
 
 The following Python libraries are required:
 ```
@@ -32,9 +32,13 @@ torch
 ## Model details
 The separation is powered by a custom U-Net architecture (aka WHAMSAHNet) with a bottleneck layer inspired by [Apple's singing voice cancellation model](https://arxiv.org/abs/2401.12068); WHAMSAHNet was trained and tested solely on MUSDB18-HQ - no extra data was used.
 
-The current model reached an SDR of 5.21 dB on the MUSDB18 test set.
-
+Available weights:
+* 2010 aug: ~50k training steps, data augmentation was used
+* 2060: ~50k training steps, no data augmentation
+The former weights generally achieve a higher SDR, though may fail more spectacularly on certain tracks - the latter will still fail to separate the worst-case songs, but will do so with a slightly higher SDR; the average track will though have a worse separation quality. 
+Future works will try to address this, for now the 2010_aug weights are the default choice (edit cfg.yaml if you wish to change it).
+  
 ## Known issues with the current model
 * Noisy separation
-* Faint clicks when passing from one frame to the next
 * Separation performance degrades with fully stereo content
+* Data augmentation improved performance in the average case, but worsened it in the worst-case songs

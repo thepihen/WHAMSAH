@@ -41,4 +41,3 @@ Future works will try to address this, for now the 2010_aug weights are the defa
 ## Known issues with the current model
 * Noisy separation
 * Separation performance degrades with fully stereo content
-* Data augmentation improved performance in the average case, but worsened it in the worst-case songs

@@ -30,6 +30,7 @@ class AudioDirector:
         self.win = None
         self.chunk = None
         self.half_chunk = None
+        self.sync_half_chunk = None
 
     def setup(self, cfgpath):
         self.config = None
@@ -119,6 +120,8 @@ class AudioDirector:
                 if self.syncStream is not None:
                     self.syncStream.abort()
                     self.syncStream = None
+                    self.sync_half_chunk = None
+        self.half_chunk = None
         self.mode = mode
         
         #if there is anything running interrupt it
@@ -240,8 +243,8 @@ class AudioDirector:
     def syncStreamCallback(self, indata, outdata, frames, time, status):
         #TODO
         print("got input chunk")
-        print(frames)
-        print(indata.shape)
+        #print(frames)
+        #print(indata.shape)
         if indata.shape[1] > 2:
             indata = indata[:,:2]
         elif indata.shape[1] < 2:
@@ -249,6 +252,25 @@ class AudioDirector:
         #we absolutely want stereo data for the model
         if indata is None and self.mode=="sync":
             return
+        
+
+        if indata.shape[0] < self.chunkLength:
+            if self.sync_half_chunk is None:
+                self.sync_half_chunk = indata
+                return
+            else:
+                #the input data is stored until consumed...This won't work
+                indata = np.concatenate((self.sync_half_chunk, indata), axis=0)
+                self.sync_half_chunk = None
+                if indata.shape[0] < self.chunkLength:
+                    return
+        #we assume that the data is half the chunk length
+        if indata.shape[0] > self.chunkLength:
+            #sorry not sorry
+            indata = indata[:self.chunkLength]
+        
+            
+
         chunk = torch.from_numpy(indata).to(self.config['global']['device'])
         chunk = chunk.T
         #chunk should be float32
@@ -261,10 +283,20 @@ class AudioDirector:
         #chose https://pypi.org/project/sounddevice/ for better documentation
         #and explicitely mentioning our usage among use cases
         #convert to float32
-        out = np.transpose(torch.squeeze(out, dim=0).to("cpu").numpy())[:frames]
-        chunk = np.transpose(torch.squeeze(chunk, dim=0).to("cpu").numpy())[:frames]
-        instr_part = chunk - out
+        out = np.transpose(torch.squeeze(out, dim=0).to("cpu").numpy())#[:frames]
+        chunk = np.transpose(torch.squeeze(chunk, dim=0).to("cpu").numpy())#[:frames]
+        #instr_part = chunk - out
+        if self.win is not None:
+            out = out*self.win
 
+        if self.half_chunk is not None:
+            out[:self.blocksz] += self.half_chunk
+
+        if self.blocksz != self.chunkLength:
+            self.half_chunk = out[frames:]
+            
+        out = out[:frames]
+        instr_part = chunk[:frames] - out
         #self.outChunk = out
         #self.outChunk = np.transpose(out)
         #print(self.outChunk.shape)

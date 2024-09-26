@@ -31,6 +31,7 @@ class AudioDirector:
         self.chunk = None
         self.half_chunk = None
         self.sync_half_chunk = None
+        self.sync_chunk = None
 
     def setup(self, cfgpath):
         self.config = None
@@ -125,9 +126,8 @@ class AudioDirector:
         self.mode = mode
         
         #if there is anything running interrupt it
-        #TODO
+
     def separate(self):
-        #TODO
         self.separating=True
         if self.mode == "async":
             if self.stream is None:
@@ -142,34 +142,7 @@ class AudioDirector:
                 self.syncStream = sd.Stream(blocksize=self.blocksz, callback=self.syncStreamCallback, finished_callback=event.set, device=[self.inputDevID, self.outputDevID])
                 print("Reassigned syncStream")
             self.syncStream.start()
-            #with self.stream:
-            #pass
-        #    input() #TODO: find a better way to do this
-            #Right now, stopping and restarting the stream will break the program
-            #and it will have to be restarted
-            #It is acceptable only because it's a proof of concept
-        """
-        while self.separating: #TODO
-            print(self.async_index)
-            chunk = self.getChunk()
-            if chunk is None:
-                self.separating = False
-                break
-            #separate chunk
-            with torch.inference_mode():
-                out = self.model(chunk)
-            #chose https://pypi.org/project/sounddevice/ for better documentation
-            #and explicitely mentioning our usage among use cases
-
-            #convert to float32
-            self.outChunk = out.astype(np.float32)
-            with self.stream:
-                input()
-
-            #either write directly or save in an array and output all at the end
-            #maybe both can be done (e.g. saving mode if the user wants to save the separated
-            #tracks - though this would be out of the use cases for the app)
-        """
+        
     def getChunk(self):
         #async is "easy" mode
         if self.mode == "async":
@@ -191,9 +164,8 @@ class AudioDirector:
         return None
 
     def hasNextChunk(self):
-        #TODO
+        #TODO this function is not used for now
         return True
-        return False
     
     def streamCallback(self,outdata, frames, time, status=True):
         print(frames)
@@ -253,25 +225,20 @@ class AudioDirector:
         if indata is None and self.mode=="sync":
             return
         
+        if self.sync_half_chunk is None:
+            self.sync_half_chunk = indata
+            outdata[:] = np.zeros((frames, 2))
+            return
+        else:
+            inp = np.concatenate((self.sync_half_chunk, indata), axis=0)
+            self.sync_half_chunk = inp[self.blocksz:] #we're basically simulating a N/2 hop
 
-        if indata.shape[0] < self.chunkLength:
-            if self.sync_half_chunk is None:
-                self.sync_half_chunk = indata
-                return
-            else:
-                #the input data is stored until consumed...This won't work
-                indata = np.concatenate((self.sync_half_chunk, indata), axis=0)
-                self.sync_half_chunk = None
-                if indata.shape[0] < self.chunkLength:
-                    return
         #we assume that the data is half the chunk length
-        if indata.shape[0] > self.chunkLength:
+        if inp.shape[0] > self.chunkLength:
             #sorry not sorry
-            indata = indata[:self.chunkLength]
-        
-            
+            inp = inp[:self.chunkLength]
 
-        chunk = torch.from_numpy(indata).to(self.config['global']['device'])
+        chunk = torch.from_numpy(inp).to(self.config['global']['device'])
         chunk = chunk.T
         #chunk should be float32
         chunk = chunk.float()
@@ -304,6 +271,52 @@ class AudioDirector:
         #outdata[:] = self.outChunk[:frames]
         outdata[:] = instr_part * self.instr_gain + out * self.vox_gain
 
+    def syncInStreamCallback(self, indata, frames, time, status):
+        if indata.shape[1] > 2:
+            indata = indata[:,:2]
+        elif indata.shape[1] < 2:
+            indata = np.pad(indata, ((0,0), (0,2-indata.shape[1])), 'constant')
+        #we absolutely want stereo data for the model
+        if indata is None and self.mode=="sync":
+            return
+        self.sync_chunk = indata
+        self.sync_half_chunk = self.sync_chunk[self.blocksz:]
+
+    def syncOutStreamCallback(self, outdata, frames, time, status):
+        try:
+            chunk = torch.from_numpy(self.sync_chunk).to(self.config['global']['device'])
+        except:
+            return
+        chunk = chunk.T
+        #chunk should be float32
+        chunk = chunk.float()
+        chunk = chunk.unsqueeze(0)
+        with torch.inference_mode():
+            out = self.model(chunk)
+        #chose https://pypi.org/project/sounddevice/ for better documentation
+        #and explicitely mentioning our usage among use cases
+        #convert to float32
+        out = np.transpose(torch.squeeze(out, dim=0).to("cpu").numpy())#[:frames]
+        chunk = np.transpose(torch.squeeze(chunk, dim=0).to("cpu").numpy())#[:frames]
+        #instr_part = chunk - out
+        if self.win is not None:
+            out = out*self.win
+
+        if self.half_chunk is not None:
+            out[:self.blocksz] += self.half_chunk
+
+        if self.blocksz != self.chunkLength:
+            self.half_chunk = out[frames:]
+            
+        out = out[:frames]
+        instr_part = chunk[:frames] - out
+        #self.outChunk = out
+        #self.outChunk = np.transpose(out)
+        #print(self.outChunk.shape)
+        #assert 0
+        #outdata[:] = self.outChunk[:frames]
+        outdata[:] = instr_part * self.instr_gain + out * self.vox_gain
+        self.sync_chunk = None
 
     def debug(self):
         print(self.async_index)

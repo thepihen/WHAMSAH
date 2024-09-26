@@ -1,7 +1,7 @@
 global:
   model: 'whamsah_mix_inv'
   device: 'cuda'
-  weights_path: 'model/weights/whamsah_mix_AUG_e2010_sdr_3-8084.ckpt'
+  weights_path: 'model/weights/whamsah_mix_AUG_2010.pth'
 
 separator:
   chunk: 65536 #this is the input chunk size for the model

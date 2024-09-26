@@ -41,3 +41,7 @@ Future works will try to address this, for now the 2010_aug weights are the defa
 ## Known issues with the current model
 * Noisy separation
 * Separation performance degrades with fully stereo content
+
+## Future works
+* Improving stereo content separation performance
+* Shortening fragment size to further reduce latency

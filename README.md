@@ -3,7 +3,7 @@
 ### (where redacted might stay for Apple Music)
 WHAMSAH is an audio application capable of performing voice removal/isolation from either a sound file or an audio stream with a low-latency (about 1.5 seconds) and a small memory footprint.
 
-The script currently requires about 1.5 GB of VRAM and 8GB of RAM. It was verified to be working with no issues on an NVIDIA 1650 Super.
+The script/model currently requires roughly 1.5 GB of VRAM and 8GB of RAM. It was verified to be working with no issues on an NVIDIA 1650 Super.
 
 ## Usage
 WHAMSAH has two working modes, sync and async. Both separate audio in real-time, the difference between the two is that the former uses an audio stream to get new input data for the model, the latter instead pre-loads an audio file and reads chunks from it.

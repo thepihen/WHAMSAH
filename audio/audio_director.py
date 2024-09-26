@@ -29,6 +29,7 @@ class AudioDirector:
         self.outputDevID = None
         self.win = None
         self.chunk = None
+        self.half_chunk = None
 
     def setup(self, cfgpath):
         self.config = None
@@ -43,6 +44,7 @@ class AudioDirector:
                 self.config = yaml.load(stream,Loader=yaml.FullLoader)
                 self.chunkLength = self.config['separator']['chunk']
                 self.hop = self.config['separator']['hop']
+                self.blocksz = int(self.chunkLength / (self.chunkLength / self.hop))
                 winType = self.config['separator']['window']
                 self.sr = self.config['separator']['sr']
                 #match winType with np.winType
@@ -57,11 +59,14 @@ class AudioDirector:
                 else:
                     print("Invalid or no window type - using no window")
                     self.win = None
+                if self.win is not None:
+                    #duplicate the windows so that it is a [winL, 2] array
+                    self.win = np.stack((self.win, self.win), axis=1)
             except yaml.YAMLError as exc:
                 print(exc)
                 sys.exit(1)
         
-        self.stream = sd.OutputStream(samplerate=self.sr, blocksize=self.chunkLength, callback=self.streamCallback, finished_callback=event.set)
+        self.stream = sd.OutputStream(samplerate=self.sr, blocksize=self.blocksz, callback=self.streamCallback, finished_callback=event.set)
         
         self.loadModel(self.config['global']['model'])
             
@@ -107,11 +112,13 @@ class AudioDirector:
         print(f"AD: Updating mode to {mode}")
         if mode != self.mode:
             if self.mode == "async":
-                self.stream.abort()
-                self.stream = None
+                if self.stream is not None:
+                    self.stream.abort()
+                    self.stream = None
             else:
-                self.syncStream.abort()
-                self.syncStream = None
+                if self.syncStream is not None:
+                    self.syncStream.abort()
+                    self.syncStream = None
         self.mode = mode
         
         #if there is anything running interrupt it
@@ -121,7 +128,7 @@ class AudioDirector:
         self.separating=True
         if self.mode == "async":
             if self.stream is None:
-                self.stream = sd.OutputStream(blocksize=65536, callback=self.streamCallback, finished_callback=event.set)
+                self.stream = sd.OutputStream(blocksize=self.blocksz, callback=self.streamCallback, finished_callback=event.set)
                 print("Reassigned stream")
             self.stream.start()
         elif self.mode == "sync":
@@ -129,7 +136,7 @@ class AudioDirector:
             #setup an output stream from self.outputDevice
             #start both
             if self.syncStream == None:
-                self.syncStream = sd.Stream(blocksize=65536, callback=self.syncStreamCallback, finished_callback=event.set, device=[self.inputDevID, self.outputDevID])
+                self.syncStream = sd.Stream(blocksize=self.blocksz, callback=self.syncStreamCallback, finished_callback=event.set, device=[self.inputDevID, self.outputDevID])
                 print("Reassigned syncStream")
             self.syncStream.start()
             #with self.stream:
@@ -171,8 +178,8 @@ class AudioDirector:
                 chunk = self.target_audio[self.async_index:,:]
                 #zero pad
                 chunk = np.pad(chunk, ((0, self.chunkLength - chunk.shape[0]), (0,0)), 'constant')
-            if self.win is not None:
-                chunk = chunk*self.win
+            #if self.win is not None:
+            #    chunk = chunk*self.win
             self.async_index += self.hop
             return chunk
         elif self.mode == "sync": #I have explicitely separated it from "else" just in case 
@@ -209,9 +216,19 @@ class AudioDirector:
         #chose https://pypi.org/project/sounddevice/ for better documentation
         #and explicitely mentioning our usage among use cases
         #convert to float32
-        out = np.transpose(torch.squeeze(out, dim=0).to("cpu").numpy())[:frames]
-        chunk = np.transpose(torch.squeeze(chunk, dim=0).to("cpu").numpy())[:frames]
-        instr_part = chunk - out
+        out = np.transpose(torch.squeeze(out, dim=0).to("cpu").numpy())#[:frames]
+        chunk = np.transpose(torch.squeeze(chunk, dim=0).to("cpu").numpy())#[:frames]
+
+        #multiply both out and chunk by win
+        if self.win is not None:
+            out = out*self.win
+
+        if self.half_chunk is not None:
+            out[:self.blocksz] += self.half_chunk
+        if self.blocksz != self.chunkLength:
+            self.half_chunk = out[frames:]
+        out = out[:frames]
+        instr_part = chunk[:frames] - out
 
         #self.outChunk = out
         #self.outChunk = np.transpose(out)

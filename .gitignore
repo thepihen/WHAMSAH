@@ -14,3 +14,6 @@ model/weights/*
 README_temp.md
 model/older_versions/*
 model/older_versions
+audio_fx_test.ipynb
+testdata_audiofx
+testdata_audiofx/*

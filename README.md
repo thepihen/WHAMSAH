@@ -1,7 +1,7 @@
 # WHAMSAH
 ## We Have Apple Music Sing At Home!
 
-<img src="imgs/whamsah_fully_necessary_image.jpg" alt="A WHAMSAH meme based on the 'we have X at home' format" width="600"/>
+<img src="imgs/whamsah_fully_necessary_image.jpg" alt="A WHAMSAH meme based on the 'we have X at home' format" width="450"/>
 
 WHAMSAH is an audio application capable of performing voice removal/isolation from either a sound file or an audio stream with a low-latency (about 1.5 seconds) and a small memory footprint. It was inspired by the Apple Music "Sing" functionality which, unfortunately, is currently unavailable on other services to the best of my knowledge.
 

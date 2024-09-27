@@ -1,9 +1,11 @@
 # WHAMSAH
-## We Have [Redacted] Sing At Home!
-### (where redacted might stay for Apple Music)
-WHAMSAH is an audio application capable of performing voice removal/isolation from either a sound file or an audio stream with a low-latency (about 1.5 seconds) and a small memory footprint.
+## We Have Apple Music Sing At Home!
 
-The script/model currently requires roughly 1.5 GB of VRAM and 8GB of RAM. It was verified to be working with no issues on an NVIDIA 1650 Super.
+<img src="imgs/whamsah_fully_necessary_image.jpg" alt="A WHAMSAH meme based on the 'we have X at home' format" width="600"/>
+
+WHAMSAH is an audio application capable of performing voice removal/isolation from either a sound file or an audio stream with a low-latency (about 1.5 seconds) and a small memory footprint. It was inspired by the Apple Music "Sing" functionality which, unfortunately, is currently unavailable on other services to the best of my knowledge.
+
+The script/model requires roughly 1.5 GB of VRAM and 8GB of RAM. It was verified to be working with no issues on an NVIDIA 1650 Super.
 
 ## Usage
 WHAMSAH has two working modes, sync and async. Both separate audio in real-time, the difference between the two is that the former uses an audio stream to get new input data for the model, the latter instead pre-loads an audio file and reads chunks from it.
@@ -12,7 +14,7 @@ Sync mode requires the user to first select a Host API (e.g. MME, DirectSound, W
 
 Async mode requires the user to first select a source using the file picker. The app currently supports FLAC, MP3 and WAV audio files. In this case, selecting an API and input/output device combination is not required as the script will always use the system defaults.
 
-For both modes, two sliders are available to control the loudness of both the vocals and the instrumental track.
+For both modes, two sliders are available to control the loudness of both the vocal and the instrumental track.
 
 
 ## Requirements
@@ -45,3 +47,6 @@ Future works will try to address this, for now the 2010_aug weights are the defa
 ## Future works
 * Improving stereo content separation performance
 * Shortening fragment size to further reduce latency
+
+## Disclaimer
+This project is obviously not affiliated in any way, shape or form with Apple.

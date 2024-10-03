@@ -8,10 +8,10 @@ from PIL import Image, ImageTk
 class GUI:
     def __init__(self, DIRECTOR):
         self.root = tk.Tk()
-        #set the app name to VocalSplitter
-        self.root.title('VocalSplitter')
+        #set the app name
+        self.root.title('WHAMSAH')
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        #set initial size to 400x400
+        #set initial size
         self.root.geometry('600x700')
         self.separating = False
         self.sepButton = tk.Button(self.root)

@@ -1,6 +1,6 @@
 # WHAMSAH
 ## We Have Apple Music Sing At Home!
-Watch a video demonstration on YouTube:
+Watch a video demonstration on YouTube (click on the image):
 <a href="https://youtu.be/bEybWxyHejk" target="_blank"> 
   <img src="imgs/whamsah_fully_necessary_image.jpg" alt="A WHAMSAH meme based on the 'we have X at home' format" width="450"/>
 </a>

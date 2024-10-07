@@ -39,7 +39,8 @@ The separation is powered by a custom U-Net architecture (aka WHAMSAHNet) with a
 Available weights:
 * 2010 aug: ~50k training steps, data augmentation was used
 * 2060: ~50k training steps, no data augmentation
-The former weights generally achieve a higher SDR, though may fail more spectacularly on certain tracks - the latter will still fail to separate the worst-case songs, but will do so with a slightly higher SDR; the average track will though have a worse separation quality. 
+
+The former generally achieve a higher SDR, though may fail more spectacularly on certain tracks - the latter will still fail to separate the worst-case songs, but will do so with a slightly higher SDR; the average track will though have a perceptually worse separation quality. 
 Future works will try to address this, for now the 2010_aug weights are the default choice (edit cfg.yaml if you wish to change it).
   
 ## Known issues with the current model

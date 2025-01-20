@@ -1,5 +1,0 @@
-- select audio input
-- chunking algorithm
-- apply model on chunk
-- OLA
-- if active, allow user to select the volume of base and voice
